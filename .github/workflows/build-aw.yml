@@ -63,6 +63,21 @@ jobs:
         shell: bash
         run: pyinstaller --clean --noconfirm aw.spec
 
+      - name: Assemble dist/activitywatch
+        shell: bash
+        run: |
+          mkdir -p dist/activitywatch
+          # aw-qt is the entry point — its contents go to root
+          cp -r dist/aw-qt/* dist/activitywatch/
+          # other components go as subdirectories
+          for dir in aw-server aw-watcher-afk aw-watcher-window; do
+            if [ -d "dist/$dir" ]; then
+              cp -r dist/$dir dist/activitywatch/
+            fi
+          done
+          echo "Contents of dist/activitywatch:"
+          ls dist/activitywatch/
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
