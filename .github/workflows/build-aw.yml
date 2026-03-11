@@ -1,0 +1,57 @@
+name: Build ActivityWatch Windows EXE
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        arch: [x64, x86]
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Enable long paths (required for deep Python deps)
+        run: git config --system core.longpaths true
+
+      - name: Setup Python 3.9.13 (${{ matrix.arch }})
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9.13'
+          architecture: ${{ matrix.arch }}
+
+      - name: Setup Node.js 16
+        uses: actions/setup-node@v4
+        with:
+          node-version: '16.20.2'
+
+      - name: Install Poetry
+        run: pip install poetry==1.5.1
+
+      - name: Install setuptools (required workaround)
+        run: pip install "setuptools>49.1.1"
+
+      - name: Build all modules
+        run: make build SKIP_SERVER_RUST=true
+        shell: bash
+
+      - name: Package with PyInstaller
+        run: pyinstaller --clean --noconfirm aw.spec
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: activitywatch-windows-${{ matrix.arch }}
+          path: dist/activitywatch/
+          retention-days: 7
