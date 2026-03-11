@@ -28,10 +28,10 @@ jobs:
           python-version: '3.9.13'
           architecture: x64
 
-      - name: Setup Node.js 16
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '16.20.2'
+          node-version: '20'
 
       - name: Install setuptools
         run: pip install "setuptools>49.1.1"
