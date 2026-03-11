@@ -20,3 +20,9 @@ __pycache__
 # Misc
 .*cache
 .DS_Store
+
+# Installer build artifacts
+*.msi
+*.exe
+builds/
+activitywatch-windows-x64/

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="OTGuru Agent"
+           Manufacturer="OTGuru"
+           Version="1.0.0"
+           UpgradeCode="4A8B3C2D-1E5F-4A8B-9C2D-3E5F6A8B3C2D"
+           Scope="perMachine">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of OTGuru Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Install directory -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="OTGuruAgent" />
+    </StandardDirectory>
+
+    <!-- Start Menu shortcut -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="OTGuru Agent" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="OTGuru Agent" Level="1">
+      <ComponentGroupRef Id="ActivityWatchFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Start Menu shortcut component -->
+    <Component Id="StartMenuShortcut" Directory="AppMenuFolder" Guid="5B9C4D3E-2F6A-5B9C-AD3E-4F6A7B9C4D3E">
+      <Shortcut Id="AppShortcut"
+                Name="OTGuru Agent"
+                Target="[INSTALLFOLDER]aw-qt.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKLM"
+                     Key="Software\OTGuru\Agent"
+                     Name="Installed"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+    </Component>
+
+  </Package>
+</Wix>

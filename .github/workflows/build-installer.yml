@@ -1,0 +1,82 @@
+name: Build OTGuru Agent Installer
+
+on:
+  # Run automatically after successful app build
+  workflow_run:
+    workflows: ["Build ActivityWatch Windows EXE"]
+    types: [completed]
+    branches: [main, master]
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of build-aw workflow to use artifacts from (leave empty for latest)'
+        required: false
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve artifact run ID
+        id: resolve_run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_id }}" ]; then
+            echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          else
+            echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download activitywatch artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: activitywatch-windows-x64
+          path: dist/activitywatch
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.resolve_run.outputs.run_id }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: Install WiX v4
+        run: |
+          dotnet tool install --global wix
+          wix extension add WixToolset.UI.wixext
+          wix extension add WixToolset.Bal.wixext
+
+      - name: Harvest files from dist/activitywatch
+        run: |
+          wix harvest dir dist/activitywatch `
+            --component-group ActivityWatchFiles `
+            --directory-ref INSTALLFOLDER `
+            --var var.SourceDir `
+            -o installer/HarvestedFiles.wxs
+
+      - name: Build MSI
+        run: |
+          wix build installer/Product.wxs installer/HarvestedFiles.wxs `
+            -d SourceDir=dist/activitywatch `
+            -ext WixToolset.UI.wixext `
+            -o OTGuruAgent.msi
+
+      - name: Build EXE bundle
+        run: |
+          wix build installer/Bundle.wxs `
+            -ext WixToolset.Bal.wixext `
+            -o agent_installer.exe
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otguru-agent-installer
+          path: agent_installer.exe
+          retention-days: 30

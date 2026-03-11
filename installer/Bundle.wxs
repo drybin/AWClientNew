@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="OTGuru Agent"
+          Version="1.0.0"
+          Manufacturer="OTGuru"
+          UpgradeCode="6C0D5E4F-3A7B-6C0D-BE4F-5A7B8C0D5E4F">
+
+    <!--
+      minimal theme: shows progress bar + Cancel button.
+      Silent mode is built-in — just pass /quiet or /silent flags.
+    -->
+    <bal:WixStandardBootstrapperApplication Theme="minimal" />
+
+    <Chain>
+      <MsiPackage Id="OTGuruAgentMsi"
+                  SourceFile="OTGuruAgent.msi"
+                  DisplayInternalUI="no" />
+    </Chain>
+
+  </Bundle>
+
+</Wix>
