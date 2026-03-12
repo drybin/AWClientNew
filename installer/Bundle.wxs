@@ -7,16 +7,12 @@
           Manufacturer="OTGuru"
           UpgradeCode="6C0D5E4F-3A7B-6C0D-BE4F-5A7B8C0D5E4F">
 
-    <!--
-      minimal theme: shows progress bar + Cancel button.
-      Silent mode is built-in — just pass /quiet or /silent flags.
-    -->
-    <bal:WixStandardBootstrapperApplication Theme="minimal" />
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication Theme="minimal" />
+    </BootstrapperApplication>
 
     <Chain>
-      <MsiPackage Id="OTGuruAgentMsi"
-                  SourceFile="OTGuruAgent.msi"
-                  DisplayInternalUI="no" />
+      <MsiPackage SourceFile="OTGuruAgent.msi" />
     </Chain>
 
   </Bundle>
