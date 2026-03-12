@@ -65,12 +65,11 @@ jobs:
           $lines += "    <ComponentGroup Id=`"ActivityWatchFiles`" Directory=`"INSTALLFOLDER`">"
           $index = 0
           Get-ChildItem -Path $sourceDir -Recurse -File | ForEach-Object {
-            $relPath = $_.FullName.Substring((Resolve-Path $sourceDir).Path.Length + 1)
-            $safeId = "comp_" + ($relPath -replace '[\\\/\.\-\s]', '_') -replace '[^a-zA-Z0-9_]', '_'
-            $safeId = $safeId + "_$index"
+            $compId = "comp_$index"
+            $fileId = "file_$index"
             $index++
-            $lines += "      <Component Id=`"$safeId`" Guid=`"*`">"
-            $lines += "        <File Source=`"$($_.FullName)`" />"
+            $lines += "      <Component Id=`"$compId`" Guid=`"*`">"
+            $lines += "        <File Id=`"$fileId`" Source=`"$($_.FullName)`" />"
             $lines += "      </Component>"
           }
           $lines += "    </ComponentGroup>"
