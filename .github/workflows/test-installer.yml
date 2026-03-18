@@ -34,23 +34,24 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.resolve_run.outputs.run_id }}
 
-      - name: Install MSI silently
+      - name: Install via EXE bundle silently
         shell: pwsh
         run: |
-          Write-Host "Installing OTGuruAgent.msi..."
-          $proc = Start-Process msiexec `
-            -ArgumentList "/i OTGuruAgent.msi /qn /l*v install.log" `
+          Write-Host "Installing agent_installer.exe..."
+          $proc = Start-Process ".\agent_installer.exe" `
+            -ArgumentList "/install /quiet /log install.log" `
             -Wait -PassThru
           Write-Host "Exit code: $($proc.ExitCode)"
           if (Test-Path install.log) {
             Write-Host "--- Last 30 lines of install log ---"
             Get-Content install.log | Select-Object -Last 30
           }
-          if ($proc.ExitCode -ne 0) {
-            Write-Error "FAIL: MSI installation failed (exit code $($proc.ExitCode))"
+          # 0 = success, 3010 = success + reboot required
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            Write-Error "FAIL: Installation failed (exit code $($proc.ExitCode))"
             exit 1
           }
-          Write-Host "PASS: MSI installed successfully"
+          Write-Host "PASS: Installed successfully"
 
       - name: Check install path is 64-bit Program Files
         shell: pwsh
