@@ -46,6 +46,7 @@ jobs:
           pip install -e aw-core
           pip install -e aw-client
           pip install -e aw-qt
+          pip install "PyQt6==6.5.3" "PyQt6-Qt6==6.5.3"
           pip install -e aw-server
           pip install -e aw-watcher-afk
           pip install -e aw-watcher-window
