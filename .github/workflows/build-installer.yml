@@ -12,6 +12,10 @@ on:
       run_id:
         description: 'Run ID of build-aw workflow to use artifacts from (leave empty for latest)'
         required: false
+      server_url:
+        description: 'OTGuru server URL to embed in config.json'
+        required: false
+        default: ''
 
 jobs:
   build-installer:
@@ -52,6 +56,12 @@ jobs:
           dotnet tool install --global wix --version "4.0.6"
           wix extension add WixToolset.UI.wixext/4.0.6
           wix extension add WixToolset.Bal.wixext/4.0.6
+
+      - name: Write config.json
+        shell: bash
+        run: |
+          mkdir -p dist/activitywatch
+          echo '{"server_url":"${{ inputs.server_url }}"}' > dist/activitywatch/config.json
 
       - name: Generate file components from dist/activitywatch
         shell: pwsh
