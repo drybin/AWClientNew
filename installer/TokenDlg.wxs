@@ -5,8 +5,8 @@
       <!-- Insert TokenDlg between WelcomeDlg and InstallDirDlg.
            Order="2" runs after the built-in WixUI_InstallDir publish (Order="1"),
            so our value wins for the final dialog navigation. -->
-      <Publish Dialog="WelcomeDlg"    Control="Next" Event="NewDialog" Value="TokenDlg"     Order="2" Condition="1" />
-      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="TokenDlg"     Order="2" Condition="1" />
+      <Publish Dialog="WelcomeDlg"    Control="Next" Event="NewDialog" Value="TokenDlg"     Order="10" Condition="1" />
+      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="TokenDlg"     Order="10" Condition="1" />
 
       <!-- TokenDlg navigation -->
       <Publish Dialog="TokenDlg" Control="Next"   Event="NewDialog"   Value="InstallDirDlg" Condition="1" />
