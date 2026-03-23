@@ -2,17 +2,17 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
     <UI>
-      <!-- Insert TokenDlg between WelcomeDlg and InstallDirDlg.
-           Order="2" runs after the built-in WixUI_InstallDir publish (Order="1"),
-           so our value wins for the final dialog navigation. -->
-      <Publish Dialog="WelcomeDlg"    Control="Next" Event="NewDialog" Value="TokenDlg"     Order="10" Condition="1" />
-      <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="TokenDlg"     Order="10" Condition="1" />
+      <!-- Insert TokenDlg between WelcomeDlg and VerifyReadyDlg.
+           Order="2" fires after the built-in WixUI_Minimal publish (Order="1"),
+           so our NewDialog value wins. -->
+      <Publish Dialog="WelcomeDlg"     Control="Next" Event="NewDialog" Value="TokenDlg"      Order="2" Condition="1" />
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="TokenDlg"      Order="2" Condition="NOT Installed" />
 
       <!-- TokenDlg navigation -->
-      <Publish Dialog="TokenDlg" Control="Next"   Event="NewDialog"   Value="InstallDirDlg" Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Skip"   Event="NewDialog"   Value="InstallDirDlg" Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Back"   Event="NewDialog"   Value="WelcomeDlg"    Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Cancel" Event="SpawnDialog" Value="CancelDlg"     Condition="1" />
+      <Publish Dialog="TokenDlg" Control="Next"   Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="TokenDlg" Control="Skip"   Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="TokenDlg" Control="Back"   Event="NewDialog"   Value="WelcomeDlg"     Condition="1" />
+      <Publish Dialog="TokenDlg" Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      Condition="1" />
 
       <Dialog Id="TokenDlg" Width="370" Height="270" Title="OTGuru Agent — Токен активации">
         <Control Id="Title" Type="Text" X="15" Y="15" Width="340" Height="20"
@@ -24,8 +24,8 @@
         </Control>
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                  TabSkip="yes" Text="WixUI_Bmp_Banner" />
-        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
-        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+        <Control Id="BannerLine"  Type="Line"   X="0" Y="44"  Width="370" Height="0" />
+        <Control Id="BottomLine"  Type="Line"   X="0" Y="234" Width="370" Height="0" />
 
         <Control Id="TokenLabel" Type="Text" X="25" Y="90" Width="100" Height="15" NoPrefix="yes">
           <Text Value="Токен:" />
