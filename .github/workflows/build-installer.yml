@@ -173,6 +173,22 @@ jobs:
             -ext WixToolset.Util.wixext `
             -o OTGuruAgent.msi
 
+      - name: Validate MSI (silent install test)
+        shell: pwsh
+        run: |
+          $log = "install_test.log"
+          $proc = Start-Process msiexec.exe `
+            -ArgumentList "/i OTGuruAgent.msi /qn /l*v $log" `
+            -Wait -PassThru
+          if ($proc.ExitCode -ne 0) {
+            Write-Host "MSI install failed, exit code: $($proc.ExitCode)"
+            Get-Content $log | Select-String "2819|Error|error" | Select-Object -Last 30
+            Write-Host "--- last 50 lines ---"
+            Get-Content $log | Select-Object -Last 50
+            exit 1
+          }
+          Write-Host "MSI validation passed"
+
       - name: Build EXE bundle
         run: |
           wix build installer/Bundle.wxs `
