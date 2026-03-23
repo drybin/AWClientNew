@@ -16,7 +16,7 @@ services:
   api:
     build: .
     ports:
-      - "8000:8000"
+      - "8000:8001"
     environment:
       DATABASE_URL: postgresql+asyncpg://installer:installer@postgres:5432/installer
     env_file:
