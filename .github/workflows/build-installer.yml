@@ -178,7 +178,7 @@ jobs:
         run: |
           wix msi decompile OTGuruAgent.msi -o decompiled.wxs
           Write-Host "=== NewDialog events ==="
-          Get-Content decompiled.wxs | Select-String "NewDialog|SpawnDialog|TokenDlg|WelcomeDlg|LicenseAgreement|VerifyReady"
+          Get-Content decompiled.wxs | Select-String "WelcomeEula|TokenDlg|NewDialog" | Select-Object -First 40
 
       - name: Validate MSI (silent install test)
         shell: pwsh

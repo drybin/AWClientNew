@@ -1,18 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
-    <UI>
-      <!-- Insert TokenDlg between WelcomeDlg and VerifyReadyDlg.
-           Order="2" fires after the built-in WixUI_Minimal publish (Order="1"),
-           so our NewDialog value wins. -->
-      <Publish Dialog="WelcomeDlg"     Control="Next" Event="NewDialog" Value="TokenDlg"      Order="2" Condition="1" />
-      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="TokenDlg"      Order="2" Condition="NOT Installed" />
+    <UI Id="WixUI_OTGuru">
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Title"  FaceName="Tahoma" Size="9" Bold="yes" />
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
 
-      <!-- TokenDlg navigation -->
-      <Publish Dialog="TokenDlg" Control="Next"   Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Skip"   Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Back"   Event="NewDialog"   Value="WelcomeDlg"     Condition="1" />
-      <Publish Dialog="TokenDlg" Control="Cancel" Event="SpawnDialog" Value="CancelDlg"      Condition="1" />
+      <DialogRef Id="CancelDlg" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="MsiRMFilesInUse" />
+      <DialogRef Id="PrepareDlg" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ResumeDlg" />
+      <DialogRef Id="UserExit" />
+      <DialogRef Id="ExitDlg" />
+      <DialogRef Id="WelcomeDlg" />
+      <DialogRef Id="VerifyReadyDlg" />
+
+      <!-- WelcomeDlg → TokenDlg → VerifyReadyDlg -->
+      <Publish Dialog="WelcomeDlg"     Control="Next"    Event="NewDialog"   Value="TokenDlg"      Condition="1" />
+      <Publish Dialog="WelcomeDlg"     Control="Cancel"  Event="SpawnDialog" Value="CancelDlg"     Condition="1" />
+
+      <Publish Dialog="TokenDlg"       Control="Next"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="TokenDlg"       Control="Skip"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="TokenDlg"       Control="Back"    Event="NewDialog"   Value="WelcomeDlg"     Condition="1" />
+      <Publish Dialog="TokenDlg"       Control="Cancel"  Event="SpawnDialog" Value="CancelDlg"      Condition="1" />
+
+      <Publish Dialog="VerifyReadyDlg" Control="Back"    Event="NewDialog"   Value="TokenDlg"       Condition="NOT Installed" />
+
+      <InstallUISequence>
+        <Show Dialog="WelcomeDlg" Before="ProgressDlg" Condition="NOT Installed" />
+      </InstallUISequence>
 
       <Dialog Id="TokenDlg" Width="370" Height="270" Title="OTGuru Agent — Токен активации">
         <Control Id="Title" Type="Text" X="15" Y="15" Width="340" Height="20"
