@@ -63,12 +63,19 @@ Write-Log "PC parameters saved"
 # Write hwid.txt
 $hwid | Set-Content (Join-Path $PSScriptRoot "hwid.txt")
 
-# Resolve token: parameter → clipboard → skip
+# Resolve token: token_pending.txt (from UI) → parameter → clipboard → skip
 $tokenValue = ""
-if ($Token -ne "") {
+$pendingFile = Join-Path $PSScriptRoot "token_pending.txt"
+if (Test-Path $pendingFile) {
+    $tokenValue = (Get-Content $pendingFile -Raw -ErrorAction SilentlyContinue).Trim()
+    Remove-Item $pendingFile -Force -ErrorAction SilentlyContinue
+    if ($tokenValue -ne "") { Write-Log "Token read from token_pending.txt (UI input)" }
+}
+if ($tokenValue -eq "" -and $Token -ne "") {
     $tokenValue = $Token
     Write-Log "Token received via parameter"
-} else {
+}
+if ($tokenValue -eq "") {
     try {
         Add-Type -AssemblyName System.Windows.Forms
         $clip = [System.Windows.Forms.Clipboard]::GetText()

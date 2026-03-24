@@ -12,7 +12,8 @@
     </BootstrapperApplication>
 
     <Chain>
-      <MsiPackage SourceFile="OTGuruAgent.msi" />
+      <MsiPackage SourceFile="OTGuruAgent.msi"
+                  bal:DisplayInternalUICondition="WixBundleAction = 6" />
     </Chain>
 
   </Bundle>

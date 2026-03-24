@@ -53,9 +53,18 @@
                      Type="string" />
     </Component>
 
-    <!-- Build command string for post-install script, evaluated before deferred CA runs -->
+    <Binary Id="WriteTokenScript" SourceFile="installer/WriteToken.vbs" />
+
+    <!-- Immediate CA: write TOKEN to token_pending.txt (reliable pass to deferred phase) -->
+    <CustomAction Id="WriteTokenToFile"
+                  BinaryRef="WriteTokenScript"
+                  VBScriptCall="WriteTokenToFile"
+                  Execute="immediate"
+                  Return="check" />
+
+    <!-- Build command string for post-install script -->
     <SetProperty Id="RunPostInstall"
-                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot;"
+                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot;"
                  Sequence="execute"
                  Before="RunPostInstall" />
 
@@ -67,6 +76,7 @@
                   Impersonate="no" />
 
     <InstallExecuteSequence>
+      <Custom Action="WriteTokenToFile" After="InstallFiles" Before="RunPostInstall" Condition="NOT Installed" />
       <Custom Action="RunPostInstall" After="InstallFiles" Condition="NOT Installed" />
     </InstallExecuteSequence>
 
