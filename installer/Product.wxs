@@ -55,16 +55,17 @@
 
     <Binary Id="WriteTokenScript" SourceFile="installer/WriteToken.vbs" />
 
-    <!-- Immediate CA: write TOKEN to token_pending.txt (reliable pass to deferred phase) -->
+    <!-- Immediate CA: write TOKEN (or clipboard) to %ProgramData%\OTGuruAgent\token_pending.txt -->
     <CustomAction Id="WriteTokenToFile"
                   BinaryRef="WriteTokenScript"
                   VBScriptCall="WriteTokenToFile"
                   Execute="immediate"
-                  Return="check" />
+                  Impersonate="yes"
+                  Return="ignore" />
 
-    <!-- Build command string for post-install script -->
+    <!-- [TOKEN] expanded when this immediate action runs (after UI) -->
     <SetProperty Id="RunPostInstall"
-                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot;"
+                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot;"
                  Sequence="execute"
                  Before="RunPostInstall" />
 
@@ -76,8 +77,8 @@
                   Impersonate="no" />
 
     <InstallExecuteSequence>
-      <Custom Action="WriteTokenToFile" Before="RunPostInstall" Condition="NOT Installed" />
-      <Custom Action="RunPostInstall" After="InstallFiles" Condition="NOT Installed" />
+      <Custom Action="WriteTokenToFile" Before="RunPostInstall" Condition="NOT REMOVE" />
+      <Custom Action="RunPostInstall" After="InstallFiles" Condition="NOT REMOVE" />
     </InstallExecuteSequence>
 
   </Package>

@@ -63,13 +63,18 @@ Write-Log "PC parameters saved"
 # Write hwid.txt
 $hwid | Set-Content (Join-Path $PSScriptRoot "hwid.txt")
 
-# Resolve token: token_pending.txt (from UI) → parameter → clipboard → skip
+# Resolve token: ProgramData token_pending (immediate CA) → installer folder → -Token param → clipboard
+# Note: deferred CA runs as SYSTEM; clipboard read in post-install often fails — CA writes pending file as user.
 $tokenValue = ""
-$pendingFile = Join-Path $PSScriptRoot "token_pending.txt"
-if (Test-Path $pendingFile) {
-    $tokenValue = (Get-Content $pendingFile -Raw -ErrorAction SilentlyContinue).Trim()
-    Remove-Item $pendingFile -Force -ErrorAction SilentlyContinue
-    if ($tokenValue -ne "") { Write-Log "Token read from token_pending.txt (UI input)" }
+$pendingProgramData = Join-Path $env:ProgramData "OTGuruAgent\token_pending.txt"
+$pendingInstallDir = Join-Path $PSScriptRoot "token_pending.txt"
+foreach ($pendingFile in @($pendingProgramData, $pendingInstallDir)) {
+    if ($tokenValue -ne "") { break }
+    if (Test-Path $pendingFile) {
+        $tokenValue = (Get-Content $pendingFile -Raw -ErrorAction SilentlyContinue).Trim()
+        Remove-Item $pendingFile -Force -ErrorAction SilentlyContinue
+        if ($tokenValue -ne "") { Write-Log "Token read from token_pending.txt ($pendingFile)" }
+    }
 }
 if ($tokenValue -eq "" -and $Token -ne "") {
     $tokenValue = $Token
