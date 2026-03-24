@@ -33,8 +33,10 @@ $macAddress     = if ($netCfg) { $netCfg.MACAddress } else { "" }
 $ipAddress      = if ($netCfg) { $netCfg.IPAddress[0] } else { "" }
 $installDatetime = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 $machineGuid    = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Cryptography" -ErrorAction SilentlyContinue).MachineGuid
-$diskSerial     = ((Get-WmiObject Win32_DiskDrive | Select-Object -First 1).SerialNumber ?? "").Trim()
-$mbSerial       = ((Get-WmiObject Win32_BaseBoard | Select-Object -First 1).SerialNumber ?? "").Trim()
+$diskDrive      = Get-WmiObject Win32_DiskDrive | Select-Object -First 1
+$diskSerial     = if ($diskDrive -and $diskDrive.SerialNumber) { $diskDrive.SerialNumber.Trim() } else { "" }
+$baseBoard      = Get-WmiObject Win32_BaseBoard | Select-Object -First 1
+$mbSerial       = if ($baseBoard -and $baseBoard.SerialNumber) { $baseBoard.SerialNumber.Trim() } else { "" }
 
 # Generate HWID
 $raw    = "$mbSerial$diskSerial$macAddress"
