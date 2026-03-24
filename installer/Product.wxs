@@ -76,7 +76,7 @@
                   Impersonate="no" />
 
     <InstallExecuteSequence>
-      <Custom Action="WriteTokenToFile" After="InstallFiles" Before="RunPostInstall" Condition="NOT Installed" />
+      <Custom Action="WriteTokenToFile" Before="RunPostInstall" Condition="NOT Installed" />
       <Custom Action="RunPostInstall" After="InstallFiles" Condition="NOT Installed" />
     </InstallExecuteSequence>
 
