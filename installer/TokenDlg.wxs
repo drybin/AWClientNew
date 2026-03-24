@@ -20,7 +20,6 @@
 
       <!-- WelcomeDlg → TokenDlg → VerifyReadyDlg -->
       <Publish Dialog="WelcomeDlg"     Control="Next"    Event="NewDialog"   Value="TokenDlg"      Condition="1" />
-      <Publish Dialog="WelcomeDlg"     Control="Cancel"  Event="SpawnDialog" Value="CancelDlg"     Condition="1" />
 
       <Publish Dialog="TokenDlg"       Control="Next"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
       <Publish Dialog="TokenDlg"       Control="Skip"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
