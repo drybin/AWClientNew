@@ -38,7 +38,13 @@ def main():
     if settings.custom_static:
         logger.info(f"Using custom_static: {settings.custom_static}")
 
-    logger.info("Starting up...")
+    logger.info(
+        "aw-server %s — http://%s:%s (testing=%s)",
+        __version__,
+        settings.host,
+        settings.port,
+        settings.testing,
+    )
     _start(
         host=settings.host,
         port=settings.port,
@@ -53,10 +59,15 @@ def parse_settings():
     import argparse
 
     """ CLI Arguments """
-    parser = argparse.ArgumentParser(description="Starts an ActivityWatch server")
+    # allow_abbrev=False: otherwise e.g. --te or --test can match --testing and enable
+    # testing mode unintentionally (default allow_abbrev=True in argparse).
+    parser = argparse.ArgumentParser(
+        description="Starts an ActivityWatch server", allow_abbrev=False
+    )
     parser.add_argument(
         "--testing",
         action="store_true",
+        default=False,
         help="Run aw-server in testing mode using different ports and database",
     )
     parser.add_argument("--verbose", action="store_true", help="Be chatty.")

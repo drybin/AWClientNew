@@ -51,12 +51,12 @@ def open_url(url: str) -> None:
 
 
 def open_webui(root_url: str) -> None:
-    print("Opening dashboard")
+    logger.debug("Open dashboard %s", root_url)
     open_url(root_url)
 
 
 def open_apibrowser(root_url: str) -> None:
-    print("Opening api browser")
+    logger.debug("Open API browser %s/api", root_url)
     open_url(root_url + "/api")
 
 
@@ -152,8 +152,6 @@ class TrayIcon(QSystemTrayIcon):
                     module: Module = action.data()
                     alive = module.is_alive()
                     action.setChecked(alive)
-                    # print(module.text(), alive)
-
             # TODO: Do it in a better way, singleShot isn't pretty...
             QtCore.QTimer.singleShot(2000, rebuild_modules_menu)
 
@@ -194,9 +192,7 @@ class TrayIcon(QSystemTrayIcon):
 
 
 def exit(manager: Manager) -> None:
-    # TODO: Do cleanup actions
-    # TODO: Save state for resume
-    print("Shutdown initiated, stopping all services...")
+    logger.info("Shutting down ActivityWatch services…")
     manager.stop_all()
     # Terminate entire process group, just in case.
     # os.killpg(0, signal.SIGINT)
@@ -206,8 +202,6 @@ def exit(manager: Manager) -> None:
 
 def run(manager: Manager, testing: bool = False) -> Any:
     logger.info("Creating trayicon...")
-    # print(QIcon.themeSearchPaths())
-
     app = QApplication(sys.argv)
 
     # This is needed for the icons to get picked up with PyInstaller

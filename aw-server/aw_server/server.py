@@ -1,5 +1,7 @@
 import logging
 import os
+import threading
+import time
 from datetime import datetime, timedelta
 from typing import Dict, List
 
@@ -20,6 +22,8 @@ from .custom_static import get_custom_static_blueprint
 from .log import FlaskLogHandler
 
 logger = logging.getLogger(__name__)
+
+CENTRAL_SYNC_INTERVAL_SEC = 30.0
 
 app_folder = os.path.dirname(os.path.abspath(__file__))
 static_folder = os.path.join(app_folder, "static")
@@ -129,6 +133,22 @@ def _start(
         cors_origins=cors_origins,
         custom_static=custom_static,
     )
+    with app.app_context():
+        app.api.run_central_sync()
+
+    if not testing:
+
+        def _central_sync_loop() -> None:
+            while True:
+                time.sleep(CENTRAL_SYNC_INTERVAL_SEC)
+                try:
+                    with app.app_context():
+                        app.api.run_central_sync()
+                except Exception:
+                    logger.exception("Central sync background task failed")
+
+        threading.Thread(target=_central_sync_loop, name="central-sync", daemon=True).start()
+
     try:
         app.run(
             debug=testing,

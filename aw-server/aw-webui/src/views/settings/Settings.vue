@@ -20,10 +20,6 @@ div
 
   hr
 
-  div(v-if="!$isAndroid")
-    ReleaseNotificationSettings
-    hr
-
   ColorSettings
 
   hr
@@ -48,7 +44,6 @@ import { useSettingsStore } from '~/stores/settings';
 
 import DaystartSettings from '~/views/settings/DaystartSettings.vue';
 import TimelineDurationSettings from '~/views/settings/TimelineDurationSettings.vue';
-import ReleaseNotificationSettings from '~/views/settings/ReleaseNotificationSettings.vue';
 import CategorizationSettings from '~/views/settings/CategorizationSettings.vue';
 import LandingPageSettings from '~/views/settings/LandingPageSettings.vue';
 import DeveloperSettings from '~/views/settings/DeveloperSettings.vue';
@@ -63,7 +58,6 @@ export default {
     GFPSServer,
     DaystartSettings,
     TimelineDurationSettings,
-    ReleaseNotificationSettings,
     CategorizationSettings,
     LandingPageSettings,
     Theme,

@@ -5,8 +5,6 @@ div#wrapper(v-if="loaded")
   div(:class="{'container': !fullContainer, 'container-fluid': fullContainer}").px-0.px-md-2
     div.aw-container.my-sm-3.p-3
       error-boundary
-        user-satisfaction-poll
-        new-release-notification(v-if="isNewReleaseCheckEnabled")
         router-view
 
   //aw-footer
@@ -15,7 +13,7 @@ div#wrapper(v-if="loaded")
 <script lang="ts">
 import { useSettingsStore } from '~/stores/settings';
 import { useServerStore } from '~/stores/server';
-import { useUserStore } from '@/stores/user.ts';
+import { useUserStore } from '~/stores/user';
 // if vite is used, you can import css file as module
 //import darkCssUrl from '../static/dark.css?url';
 //import darkCssContent from '../static/dark.css?inline';
@@ -24,7 +22,6 @@ export default {
   data: function () {
     return {
       activityViews: [],
-      isNewReleaseCheckEnabled: !process.env.VUE_APP_ON_ANDROID,
       loaded: false,
     };
   },
@@ -66,6 +63,8 @@ export default {
   mounted: async function () {
     const serverStore = useServerStore();
     await serverStore.getInfo();
+    const userStore = useUserStore();
+    await userStore.ensureLoaded();
   },
 };
 </script>

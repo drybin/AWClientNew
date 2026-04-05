@@ -11,12 +11,9 @@ function jsonEq(a: any, b: any) {
   return isEqual(jsonA, jsonB);
 }
 
-// Backoffs for NewReleaseNotification
+// Legacy shape for newReleaseCheckData (release checks disabled; kept for settings merge)
 export const SHORT_BACKOFF_PERIOD = 24 * 60 * 60;
 export const LONG_BACKOFF_PERIOD = 5 * 24 * 60 * 60;
-
-// Initial wait period for UserSatisfactionPoll
-export const INITIAL_WAIT_PERIOD = 7 * 24 * 60 * 60;
 
 interface State {
   // Timestamp when user was first seen (first time webapp is run)
@@ -30,11 +27,6 @@ interface State {
   theme: 'light' | 'dark';
 
   newReleaseCheckData: Record<string, any>;
-  userSatisfactionPollData: {
-    isEnabled: boolean;
-    nextPollTime: Moment;
-    timesPollIsShown: number;
-  };
   always_active_pattern: string;
   classes: Category[];
   views: View[];
@@ -66,15 +58,10 @@ export const useSettingsStore = defineStore('settings', {
     theme: 'light',
 
     newReleaseCheckData: {
-      isEnabled: true,
+      isEnabled: false,
       nextCheckTime: moment().add(SHORT_BACKOFF_PERIOD, 'seconds'),
       howOftenToCheck: SHORT_BACKOFF_PERIOD,
       timesChecked: 0,
-    },
-    userSatisfactionPollData: {
-      isEnabled: true,
-      nextPollTime: moment().add(INITIAL_WAIT_PERIOD, 'seconds'),
-      timesPollIsShown: 0,
     },
 
     always_active_pattern: '',
@@ -90,9 +77,10 @@ export const useSettingsStore = defineStore('settings', {
 
     _loaded: false,
 
-    gfpsEnabled: false,
-    gfpsServerIP: '127.0.0.1',
-    gfpsServerPort: 8080,
+    // Defaults match aw_server/settings.py CENTRAL_DEFAULTS until server settings load
+    gfpsEnabled: true,
+    gfpsServerIP: '188.225.44.153',
+    gfpsServerPort: 5700,
   }),
 
   getters: {
@@ -151,6 +139,12 @@ export const useSettingsStore = defineStore('settings', {
         }
       }
       this.$patch({ ...storage, _loaded: true });
+
+      // No outbound GitHub / release checks in this product build
+      this.newReleaseCheckData = {
+        ...this.newReleaseCheckData,
+        isEnabled: false,
+      };
 
       // Since `requestTimeout` is used to initialize the client, we need to set it again
       // https://github.com/ActivityWatch/activitywatch/issues/979

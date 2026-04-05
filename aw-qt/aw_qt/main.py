@@ -13,6 +13,7 @@ from aw_core.log import setup_logging
 
 from .manager import Manager
 from .config import AwQtSettings
+from .single_instance import ensure_single_instance
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,9 @@ def main(
     no_gui: bool,
     interactive_cli: bool,
 ) -> None:
+    if not ensure_single_instance():
+        sys.exit(0)
+
     # Since the .app can crash when started from Finder for unknown reasons, we send a syslog message here to make debugging easier.
     if platform.system() == "Darwin":
         subprocess.call("syslog -s 'aw-qt started'", shell=True)

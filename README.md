@@ -1,3 +1,7 @@
+**AWClient fork:** сборка Windows-установщика, интеграция с центральным сервером (GFP/TIM) и заметки для разработки — см. [DEV_BUILD.md](DEV_BUILD.md).
+
+---
+
 <img title="ActivityWatch" src="https://activitywatch.net/img/banner.png" align="center">
 
 <p align="center">

@@ -12,12 +12,12 @@
         div.d-inline-flex.mb-3
           span IP
         div.d-inline-flex
-          b-input.float-right.ml-4(v-model="gfpsServerIP" type="text", placeholder="127.0.0.1")
+          b-input.float-right.ml-4(v-model="gfpsServerIP" type="text", placeholder="GFPS host")
       div.d-inline-flex.mb-1
         div.d-inline-flex
           span Port
         div.d-inline-flex
-          b-input.float-right.ml-4(v-model="gfpsServerPort" type="number", placeholder="8080")
+          b-input.float-right.ml-4(v-model="gfpsServerPort" type="number", placeholder="5700")
     b-alert(show) #[b Note:] Save your changes before testing.
     div.row
 
@@ -43,9 +43,9 @@ import { getClient } from '@/util/awclient.ts';
 export default {
   data() {
     return {
-      gfpsEnabled: false,
-      gfpsServerIP: '',
-      gfpsServerPort: '',
+      gfpsEnabled: true,
+      gfpsServerIP: '188.225.44.153',
+      gfpsServerPort: 5700,
       settingsStore: useSettingsStore(),
       unsavedChanges: false,
       connection: 'Not tested',
@@ -53,13 +53,13 @@ export default {
   },
   computed: {},
   watch: {
-    gfpsEnabled: function (value) {
+    gfpsEnabled: function (_value) {
       this.unsavedChangesListener();
     },
-    gfpsServerIP: function (value) {
+    gfpsServerIP: function (_value) {
       this.unsavedChangesListener();
     },
-    gfpsServerPort: function (value) {
+    gfpsServerPort: function (_value) {
       this.unsavedChangesListener();
     },
   },

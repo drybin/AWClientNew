@@ -3,6 +3,13 @@ from pathlib import Path
 
 from aw_core.dirs import get_config_dir
 
+# Default central server (GFP/TIM) before settings.json exists; overridden after user saves in Settings.
+CENTRAL_DEFAULTS = {
+    "gfpsEnabled": True,
+    "gfpsServerIP": "188.225.44.153",
+    "gfpsServerPort": 5700,
+}
+
 
 class Settings:
     def __init__(self, testing: bool):
@@ -29,8 +36,16 @@ class Settings:
 
     def get(self, key: str, default=None):
         if not key:
-            return self.data
-        return self.data.get(key, default)
+            merged = dict(self.data)
+            for gk, gv in CENTRAL_DEFAULTS.items():
+                if gk not in merged:
+                    merged[gk] = gv
+            return merged
+        if key in self.data:
+            return self.data[key]
+        if key in CENTRAL_DEFAULTS:
+            return CENTRAL_DEFAULTS[key]
+        return default
 
     def set(self, key, value):
         if value:

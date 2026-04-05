@@ -39,13 +39,10 @@ Vue.component('aw-footer', () => import('./components/Footer.vue'));
 Vue.component('aw-devonly', () => import('./components/DevOnly.vue'));
 Vue.component('aw-selectable-vis', () => import('./components/SelectableVisualization.vue'));
 Vue.component('aw-selectable-eventview', () => import('./components/SelectableEventView.vue'));
-Vue.component('new-release-notification', () => import('./components/NewReleaseNotification.vue'));
-Vue.component('user-satisfaction-poll', () => import('./components/UserSatisfactionPoll.vue'));
 Vue.component('aw-query-options', () => import('./components/QueryOptions.vue'));
 Vue.component('aw-select-categories', () => import('./components/SelectCategories.vue'));
-Vue.component(
-  'aw-select-categories-or-pattern',
-  () => import('./components/SelectCategoriesOrPattern.vue')
+Vue.component('aw-select-categories-or-pattern', () =>
+  import('./components/SelectCategoriesOrPattern.vue')
 );
 
 // Visualization components

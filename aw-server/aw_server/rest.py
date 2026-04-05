@@ -128,7 +128,7 @@ class InfoResource(Resource):
 
 # BUCKETS
 
-
+@api.route("/0/buckets")
 @api.route("/0/buckets/")
 class BucketsResource(Resource):
     # TODO: Add response marshalling/validation
@@ -283,7 +283,6 @@ class HeartbeatResource(Resource):
     )
     @copy_doc(ServerAPI.heartbeat)
     def post(self, bucket_id):
-        print("HEARTBEAT")
         heartbeat = Event(**request.get_json())
 
         if "pulsetime" in request.args:
@@ -413,48 +412,100 @@ class UUIDResource(Resource):
     def get(self):
         return {"uuid": get_device_id()},200
 
+def _gfps_proxy_ok():
+    if not current_app.api.get_setting("gfpsEnabled"):
+        return {"error": "GFPS disabled"}, 200
+    if not current_app.api.get_setting("gfpsServerIP") or not current_app.api.get_setting("gfpsServerPort"):
+        return {"error": "Address for GFPS server not set"}, 200
+    return None
+
+
+def _gfps_user_upstream_json(upstream: requests.Response):
+    """Parse JSON from GFP/TIM; return (body, http_status) to preserve e.g. 409 email conflict."""
+    try:
+        body = json.loads(upstream.text) if upstream.text else {}
+    except json.JSONDecodeError:
+        body = {"status": "error", "message": upstream.text or "invalid JSON"}
+    code = upstream.status_code
+    if code is None or code < 100:
+        code = 200
+    if code >= 400:
+        return body, code
+    return body
+
+
 @api.route("/0/gfps/user")
 class GfpsUserResource(Resource):
     def post(self):
-        #check settings
-        if not current_app.api.get_setting("gfpsServerIP") or not current_app.api.get_setting("gfpsServerPort"):
-            return {"error": "Address for GFPS server not set"}, 200
+        blocked = _gfps_proxy_ok()
+        if blocked is not None:
+            return blocked
         data = request.get_json()
         try:
-            req = requests.post("http://" + current_app.api.get_setting("gfpsServerIP") + ":" + str(
-                current_app.api.get_setting("gfpsServerPort")) + "/api/0/user", json=data,
-                                headers={'Content-Type': 'application/json'})
-            return json.loads(req.text)
+            req = requests.post(
+                "http://"
+                + current_app.api.get_setting("gfpsServerIP")
+                + ":"
+                + str(current_app.api.get_setting("gfpsServerPort"))
+                + "/api/0/user",
+                json=data,
+                headers={"Content-Type": "application/json"},
+            )
+            return _gfps_user_upstream_json(req)
         except Exception as e:
             return {"status": "error", "message": str(e)}, 200
+
     def put(self):
-        #check settings
-        if not current_app.api.get_setting("gfpsServerIP") or not current_app.api.get_setting("gfpsServerPort"):
-            return {"error": "Address for GFPS server not set"}, 200
+        blocked = _gfps_proxy_ok()
+        if blocked is not None:
+            return blocked
         data = request.get_json()
         try:
-            req = requests.put("http://" + current_app.api.get_setting("gfpsServerIP") + ":" + str(
-                current_app.api.get_setting("gfpsServerPort")) + "/api/0/user", json=data,
-                               headers={'Content-Type': 'application/json'})
-            return json.loads(req.text)
+            req = requests.put(
+                "http://"
+                + current_app.api.get_setting("gfpsServerIP")
+                + ":"
+                + str(current_app.api.get_setting("gfpsServerPort"))
+                + "/api/0/user",
+                json=data,
+                headers={"Content-Type": "application/json"},
+            )
+            return _gfps_user_upstream_json(req)
         except Exception as e:
             return {"status": "error", "message": str(e)}, 200
 @api.route("/0/gfps/user/<string:user_uuid>")
 class GfpsUserUUIDResource(Resource):
     def get(self, user_uuid):
-        if not current_app.api.get_setting("gfpsServerIP"):
-            return {"error": "Address for GFPS server not set"}, 200
+        blocked = _gfps_proxy_ok()
+        if blocked is not None:
+            return blocked
         try:
             return requests.get("http://" + current_app.api.get_setting("gfpsServerIP") + ":" + str(current_app.api.get_setting(
                 "gfpsServerPort")) + "/api/0/user/" + user_uuid, headers={'Content-Type': 'application/json'}).json()
         except Exception as e:
             return {"status": "error", "message": str(e)}, 200
 
+
+@api.route("/0/gfps/invitations/claim")
+class GfpsInvitationClaimResource(Resource):
+    def post(self):
+        """Proxy to GFPS claim: forwards token + uuid (device_id from server). Claim body must not include username."""
+        blocked = _gfps_proxy_ok()
+        if blocked is not None:
+            return blocked
+        data = request.get_json() or {}
+        token = (data.get("token") or "").strip()
+        if not token:
+            return {"status": "error", "error": "empty_token", "message": "Token is required"}, 200
+        return current_app.api.claim_invitation_token(token)
+
+
 @api.route("/0/gfps/status")
 class GfpsStatusResource(Resource):
     def get(self):
-        if not current_app.api.get_setting("gfpsServerIP") or not current_app.api.get_setting("gfpsServerPort"):
-            return {"error": "Address for GFPS server not set"}, 200
+        blocked = _gfps_proxy_ok()
+        if blocked is not None:
+            return blocked
         try:
             return requests.get("http://" + current_app.api.get_setting("gfpsServerIP") + ":" + str(current_app.api.get_setting(
                 "gfpsServerPort")) + "/api/0/status", headers={'Content-Type': 'application/json'}).json()
