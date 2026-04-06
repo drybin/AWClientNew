@@ -1,0 +1,86 @@
+name: Build ActivityWatch Windows EXE
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+# Note: x86 is not supported — PyQt6 has no 32-bit Windows wheels.
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Enable long paths
+        run: git config --system core.longpaths true
+
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python 3.9.13 (x64)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9.13'
+          architecture: x64
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install setuptools
+        run: pip install "setuptools>49.1.1"
+
+      - name: Build web UI for aw-server
+        shell: bash
+        run: make --directory=aw-server aw-webui
+
+      - name: Install Python modules
+        shell: bash
+        run: |
+          pip install -e aw-core
+          pip install -e aw-client
+          pip install -e aw-qt
+          pip install "PyQt6==6.5.3" "PyQt6-Qt6==6.5.3"
+          pip install -e aw-server
+          pip install -e aw-watcher-afk
+          pip install -e aw-watcher-window
+          # Second pass for aw-core and aw-client (mirrors Makefile workaround)
+          pip install -e aw-client
+          pip install -e aw-core
+
+      - name: Install PyInstaller
+        shell: bash
+        run: |
+          pip install pyinstaller
+          pip install "git+https://github.com/pyinstaller/pyinstaller-hooks-contrib.git@master"
+
+      - name: Package with PyInstaller
+        shell: bash
+        run: pyinstaller --clean --noconfirm aw.spec
+
+      - name: Assemble dist/activitywatch
+        shell: bash
+        run: |
+          mkdir -p dist/activitywatch
+          # All components go flat into one directory so shared DLLs (python39.dll etc.)
+          # are visible to every exe. aw-qt discovers aw-*.exe by scanning its own dir.
+          for dir in aw-qt aw-server aw-watcher-afk aw-watcher-window; do
+            if [ -d "dist/$dir" ]; then
+              cp -rn dist/$dir/* dist/activitywatch/
+            fi
+          done
+          echo "Contents of dist/activitywatch:"
+          ls dist/activitywatch/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: activitywatch-windows-x64
+          path: dist/activitywatch/
+          retention-days: 7

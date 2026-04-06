@@ -1,0 +1,164 @@
+name: Test Installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of build-installer workflow (leave empty for latest)'
+        required: false
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Resolve installer run ID
+        id: resolve_run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "${{ inputs.run_id }}" ]; then
+            echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          else
+            RUN_ID=$(gh api repos/${{ github.repository }}/actions/workflows/build-installer.yml/runs \
+              --jq '.workflow_runs[] | select(.conclusion == "success") | .id' | head -1)
+            echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+            echo "Using latest successful build-installer run: $RUN_ID"
+          fi
+
+      - name: Download installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: otguru-agent-installer
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.resolve_run.outputs.run_id }}
+
+      - name: Install via EXE bundle silently
+        shell: pwsh
+        run: |
+          Write-Host "Installing agent_installer.exe..."
+          $proc = Start-Process ".\agent_installer.exe" `
+            -ArgumentList "/install /quiet /log install.log" `
+            -Wait -PassThru
+          Write-Host "Exit code: $($proc.ExitCode)"
+          if (Test-Path install.log) {
+            Write-Host "--- Last 30 lines of install log ---"
+            Get-Content install.log | Select-Object -Last 30
+          }
+          # 0 = success, 3010 = success + reboot required
+          if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+            Write-Error "FAIL: Installation failed (exit code $($proc.ExitCode))"
+            exit 1
+          }
+          Write-Host "PASS: Installed successfully"
+
+      - name: Check install path is 64-bit Program Files
+        shell: pwsh
+        run: |
+          $path64 = "C:\Program Files\OTGuruAgent"
+          $path32 = "C:\Program Files (x86)\OTGuruAgent"
+
+          if (Test-Path $path32) {
+            Write-Error "FAIL: Installed in 32-bit path ($path32) — WiX arch flag missing"
+            exit 1
+          }
+          if (-not (Test-Path $path64)) {
+            Write-Error "FAIL: Not found at $path64"
+            exit 1
+          }
+          Write-Host "PASS: Installed at $path64"
+
+      - name: Check required files exist
+        shell: pwsh
+        run: |
+          $dir = "C:\Program Files\OTGuruAgent"
+          $required = @(
+            "aw-qt.exe",
+            "python39.dll"
+          )
+          $failed = @()
+          foreach ($f in $required) {
+            if (Test-Path "$dir\$f") {
+              Write-Host "PASS: $f"
+            } else {
+              Write-Host "FAIL: $f — not found"
+              $failed += $f
+            }
+          }
+          Write-Host ""
+          Write-Host "--- All files in install dir ---"
+          Get-ChildItem $dir -Name
+          if ($failed.Count -gt 0) { exit 1 }
+
+      - name: Check aw-qt.exe starts (offscreen mode)
+        shell: pwsh
+        run: |
+          $exe = "C:\Program Files\OTGuruAgent\aw-qt.exe"
+          Write-Host "Starting $exe with QT_QPA_PLATFORM=offscreen ..."
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $proc = Start-Process $exe `
+            -ArgumentList "--no-gui" `
+            -RedirectStandardOutput "aw-qt-stdout.log" `
+            -RedirectStandardError "aw-qt-stderr.log" `
+            -PassThru -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 8
+
+          Write-Host "--- aw-qt stdout ---"
+          if (Test-Path "aw-qt-stdout.log") { Get-Content "aw-qt-stdout.log" }
+          Write-Host "--- aw-qt stderr ---"
+          if (Test-Path "aw-qt-stderr.log") { Get-Content "aw-qt-stderr.log" }
+
+          if ($proc.HasExited) {
+            Write-Error "FAIL: aw-qt.exe exited (code: $($proc.ExitCode))"
+            exit 1
+          }
+
+          Write-Host "PASS: aw-qt.exe running after 8s"
+          $proc.Kill()
+
+      - name: Check aw-server.exe starts and serves
+        shell: pwsh
+        run: |
+          $exe = "C:\Program Files\OTGuruAgent\aw-server.exe"
+          Write-Host "Starting $exe ..."
+          $proc = Start-Process $exe `
+            -RedirectStandardOutput "aw-server-stdout.log" `
+            -RedirectStandardError "aw-server-stderr.log" `
+            -PassThru -ErrorAction SilentlyContinue
+          Start-Sleep -Seconds 10
+
+          Write-Host "--- aw-server stdout ---"
+          if (Test-Path "aw-server-stdout.log") { Get-Content "aw-server-stdout.log" }
+          Write-Host "--- aw-server stderr ---"
+          if (Test-Path "aw-server-stderr.log") { Get-Content "aw-server-stderr.log" }
+
+          if ($proc.HasExited) {
+            Write-Error "FAIL: aw-server.exe exited (code: $($proc.ExitCode))"
+            exit 1
+          }
+
+          # Check it's actually serving
+          try {
+            $resp = Invoke-WebRequest -Uri "http://localhost:5600/api/0/info" -UseBasicParsing -TimeoutSec 5
+            Write-Host "PASS: aw-server.exe responding on :5600 (status $($resp.StatusCode))"
+          } catch {
+            Write-Error "FAIL: aw-server.exe not responding on :5600 — $_"
+            $proc.Kill()
+            exit 1
+          }
+
+          $proc.Kill()
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            install.log
+            aw-qt-stdout.log
+            aw-qt-stderr.log
+            aw-server-stdout.log
+            aw-server-stderr.log
+          retention-days: 7

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal">
+
+  <Bundle Name="OTGuru Agent"
+          Version="1.0.0"
+          Manufacturer="OTGuru"
+          UpgradeCode="6C0D5E4F-3A7B-6C0D-BE4F-5A7B8C0D5E4F">
+
+    <BootstrapperApplication>
+      <bal:WixInternalUIBootstrapperApplication />
+    </BootstrapperApplication>
+
+    <Chain>
+      <!-- Always show MSI internal UI to avoid silent maintenance/reinstall flows -->
+      <MsiPackage SourceFile="OTGuruAgent.msi"
+                  bal:DisplayInternalUICondition="1" />
+    </Chain>
+
+  </Bundle>
+
+</Wix>

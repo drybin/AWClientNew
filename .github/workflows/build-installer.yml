@@ -1,0 +1,218 @@
+name: Build OTGuru Agent Installer
+
+on:
+  workflow_run:
+    workflows: ["Build ActivityWatch Windows EXE"]
+    types: [completed]
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'Run ID of build-aw workflow (leave empty for latest)'
+        required: false
+      server_url:
+        description: 'OTGuru server URL'
+        required: false
+        default: ''
+      company_id:
+        description: 'Company ID'
+        required: false
+        default: ''
+      tenant_id:
+        description: 'Tenant ID'
+        required: false
+        default: ''
+      installer_id:
+        description: 'Installer ID'
+        required: false
+        default: ''
+      build_id:
+        description: 'Build UUID from installer-service'
+        required: false
+        default: ''
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve artifact run ID
+        id: resolve_run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.run_id }}" ]; then
+            echo "run_id=${{ inputs.run_id }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "run_id=${{ github.event.workflow_run.id }}" >> $GITHUB_OUTPUT
+          else
+            run_id=$(gh run list --workflow=build-aw.yml --status=success --limit=1 --json databaseId --jq '.[0].databaseId')
+            echo "run_id=$run_id" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download activitywatch artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: activitywatch-windows-x64
+          path: dist/activitywatch
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.resolve_run.outputs.run_id }}
+
+      - name: Write config_template.json
+        shell: bash
+        run: |
+          mkdir -p dist/activitywatch
+          cat > dist/activitywatch/config_template.json <<EOF
+          {
+            "company_id": "${{ inputs.company_id }}",
+            "tenant_id": "${{ inputs.tenant_id }}",
+            "server_url": "${{ inputs.server_url }}",
+            "installer_id": "${{ inputs.installer_id }}",
+            "build_id": "${{ inputs.build_id }}"
+          }
+          EOF
+
+      - name: Copy post-install script
+        shell: bash
+        run: cp installer/post-install.ps1 dist/activitywatch/post-install.ps1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: Install WiX v4
+        run: |
+          dotnet tool install --global wix --version "4.0.6"
+          wix extension add WixToolset.UI.wixext/4.0.6
+          wix extension add WixToolset.Bal.wixext/4.0.6
+          wix extension add WixToolset.Util.wixext/4.0.6
+
+      - name: Generate file components from dist/activitywatch
+        shell: pwsh
+        run: |
+          $sourceRoot = (Resolve-Path "dist\activitywatch").Path
+          $wixNs = "http://wixtoolset.org/schemas/v4/wxs"
+
+          $dirMap = @{ "" = "INSTALLFOLDER" }
+          $dirIdx = 0
+          Get-ChildItem -Path $sourceRoot -Recurse -Directory | Sort-Object FullName | ForEach-Object {
+            $rel = $_.FullName.Substring($sourceRoot.Length + 1)
+            $dirMap[$rel] = "d$dirIdx"
+            $dirIdx++
+          }
+
+          $doc = New-Object System.Xml.XmlDocument
+          $doc.AppendChild($doc.CreateXmlDeclaration("1.0","UTF-8",$null)) | Out-Null
+          $wix = $doc.CreateElement("Wix", $wixNs)
+          $doc.AppendChild($wix) | Out-Null
+          $frag = $doc.CreateElement("Fragment", $wixNs)
+          $wix.AppendChild($frag) | Out-Null
+
+          $nodeMap = @{ "" = $null }
+          $dirRef = $doc.CreateElement("DirectoryRef", $wixNs)
+          $dirRef.SetAttribute("Id", "INSTALLFOLDER")
+          $frag.AppendChild($dirRef) | Out-Null
+
+          Get-ChildItem -Path $sourceRoot -Recurse -Directory | Sort-Object FullName | ForEach-Object {
+            $rel    = $_.FullName.Substring($sourceRoot.Length + 1)
+            $parent = [IO.Path]::GetDirectoryName($rel)
+            if (-not $parent) { $parent = "" }
+            $id   = $dirMap[$rel]
+            $name = $_.Name
+            $dirNode = $doc.CreateElement("Directory", $wixNs)
+            $dirNode.SetAttribute("Id", $id)
+            $dirNode.SetAttribute("Name", $name)
+            $parentNode = if ($parent -eq "") { $dirRef } else { $nodeMap[$parent] }
+            $parentNode.AppendChild($dirNode) | Out-Null
+            $nodeMap[$rel] = $dirNode
+          }
+
+          $cg = $doc.CreateElement("ComponentGroup", $wixNs)
+          $cg.SetAttribute("Id", "ActivityWatchFiles")
+          $frag.AppendChild($cg) | Out-Null
+
+          $fileIdx = 0
+          Get-ChildItem -Path $sourceRoot -Recurse -File | ForEach-Object {
+            $rel    = $_.FullName.Substring($sourceRoot.Length + 1)
+            $dirRel = [IO.Path]::GetDirectoryName($rel)
+            if (-not $dirRel) { $dirRel = "" }
+            $dirId  = $dirMap[$dirRel]
+
+            $comp = $doc.CreateElement("Component", $wixNs)
+            $comp.SetAttribute("Id", "c$fileIdx")
+            $comp.SetAttribute("Directory", $dirId)
+            $comp.SetAttribute("Guid", "*")
+
+            $fileEl = $doc.CreateElement("File", $wixNs)
+            $fileEl.SetAttribute("Id", "f$fileIdx")
+            $fileEl.SetAttribute("Source", $_.FullName)
+            $comp.AppendChild($fileEl) | Out-Null
+            $cg.AppendChild($comp) | Out-Null
+            $fileIdx++
+          }
+
+          $settings = New-Object System.Xml.XmlWriterSettings
+          $settings.Indent = $true
+          $settings.Encoding = [System.Text.Encoding]::UTF8
+          $writer = [System.Xml.XmlWriter]::Create("installer\HarvestedFiles.wxs", $settings)
+          $doc.Save($writer)
+          $writer.Close()
+          Write-Host "Generated $fileIdx file components across $dirIdx directories"
+
+      - name: Build MSI
+        run: |
+          wix build installer/Product.wxs installer/HarvestedFiles.wxs installer/TokenDlg.wxs `
+            -arch x64 `
+            -ext WixToolset.UI.wixext `
+            -ext WixToolset.Util.wixext `
+            -o OTGuruAgent.msi
+
+      - name: Dump MSI dialog sequence (debug)
+        shell: pwsh
+        run: |
+          wix msi decompile OTGuruAgent.msi -o decompiled.wxs
+          Write-Host "=== NewDialog events ==="
+          Get-Content decompiled.wxs | Select-String "WelcomeEula|TokenDlg|NewDialog" | Select-Object -First 40
+
+      - name: Validate MSI (silent install test)
+        shell: pwsh
+        run: |
+          $log = "install_test.log"
+          $proc = Start-Process msiexec.exe `
+            -ArgumentList "/i OTGuruAgent.msi /qn /l*v $log" `
+            -Wait -PassThru
+          if ($proc.ExitCode -ne 0) {
+            Write-Host "MSI install failed, exit code: $($proc.ExitCode)"
+            Get-Content $log | Select-String "2819|Error|error" | Select-Object -Last 30
+            Write-Host "--- last 50 lines ---"
+            Get-Content $log | Select-Object -Last 50
+            exit 1
+          }
+          Write-Host "MSI validation passed"
+
+      - name: Build EXE bundle
+        run: |
+          wix build installer/Bundle.wxs `
+            -arch x64 `
+            -ext WixToolset.Bal.wixext `
+            -o agent_installer.exe
+
+      - name: Upload EXE bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otguru-agent-installer
+          path: agent_installer.exe
+          retention-days: 30
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: otguru-agent-msi
+          path: OTGuruAgent.msi
+          retention-days: 30

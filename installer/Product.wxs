@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="OTGuru Agent"
+           Manufacturer="OTGuru"
+           Version="1.0.0"
+           UpgradeCode="4A8B3C2D-1E5F-4A8B-9C2D-3E5F6A8B3C2D"
+           Scope="perMachine"
+           Codepage="1251">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of OTGuru Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <UIRef Id="WixUI_OTGuru" />
+
+    <!-- Required by VerifyReadyDlg - controls linked to WIXUI_INSTALLDIR cause 2819 if missing -->
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="TOKEN" Secure="yes" />
+
+    <!-- Install directory: C:\Program Files\OTGuruAgent\ -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="OTGuruAgent" />
+    </StandardDirectory>
+
+    <!-- Start Menu shortcut -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="OTGuru Agent" />
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="OTGuru Agent" Level="1">
+      <ComponentGroupRef Id="ActivityWatchFiles" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- Start Menu shortcut + autostart component -->
+    <Component Id="StartMenuShortcut" Directory="AppMenuFolder"
+               Guid="5B9C4D3E-2F6A-5B9C-AD3E-4F6A7B9C4D3E">
+      <Shortcut Id="AppShortcut"
+                Name="OTGuru Agent"
+                Target="[INSTALLFOLDER]aw-qt.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKLM"
+                     Key="Software\OTGuru\Agent"
+                     Name="Installed"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+      <!-- Autostart -->
+      <RegistryValue Root="HKCU"
+                     Key="Software\Microsoft\Windows\CurrentVersion\Run"
+                     Name="OTGuruAgent"
+                     Value="[INSTALLFOLDER]aw-qt.exe"
+                     Type="string" />
+    </Component>
+
+    <Binary Id="WriteTokenScript" SourceFile="installer/WriteToken.vbs" />
+
+    <!-- Immediate CA: write TOKEN (or clipboard) to %ProgramData%\OTGuruAgent\token_pending.txt -->
+    <CustomAction Id="WriteTokenToFile"
+                  BinaryRef="WriteTokenScript"
+                  VBScriptCall="WriteTokenToFile"
+                  Execute="immediate"
+                  Impersonate="yes"
+                  Return="ignore" />
+
+    <!-- [TOKEN] expanded when this immediate action runs (after UI) -->
+    <SetProperty Id="RunPostInstall"
+                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot; -UserAppData &quot;[AppDataFolder]&quot;"
+                 Sequence="execute"
+                 Before="RunPostInstall" />
+
+    <CustomAction Id="RunPostInstall"
+                  BinaryRef="Wix4UtilCA_X64"
+                  DllEntry="WixQuietExec"
+                  Execute="deferred"
+                  Return="ignore"
+                  Impersonate="no" />
+
+    <InstallExecuteSequence>
+      <Custom Action="WriteTokenToFile" Before="RunPostInstall" Condition="NOT REMOVE" />
+      <Custom Action="RunPostInstall" After="InstallFiles" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+
+  </Package>
+</Wix>
