@@ -23,8 +23,8 @@
       <!-- WelcomeDlg → TokenDlg → VerifyReadyDlg -->
       <Publish Dialog="WelcomeDlg"     Control="Next"    Event="NewDialog"   Value="TokenDlg"      Condition="1" />
 
-      <Publish Dialog="TokenDlg"       Control="Next"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
-      <Publish Dialog="TokenDlg"       Control="Skip"    Event="NewDialog"   Value="VerifyReadyDlg" Condition="1" />
+      <Publish Dialog="TokenDlg"       Control="Next"    Event="SpawnDialog" Value="TokenRequiredDlg" Order="1" Condition="NOT TOKEN OR TOKEN=&quot;&quot;" />
+      <Publish Dialog="TokenDlg"       Control="Next"    Event="NewDialog"   Value="VerifyReadyDlg"   Order="2" Condition="TOKEN&lt;&gt;&quot;&quot;" />
       <Publish Dialog="TokenDlg"       Control="Back"    Event="NewDialog"   Value="WelcomeDlg"     Condition="1" />
       <Publish Dialog="TokenDlg"       Control="Cancel"  Event="SpawnDialog" Value="CancelDlg"      Condition="1" />
 
@@ -50,7 +50,7 @@
           <Text Value="{\WixUI_Font_Title}Токен активации" />
         </Control>
         <Control Id="Description" Type="Text" X="25" Y="40" Width="320" Height="30" NoPrefix="yes">
-          <Text Value="Введите токен активации, если он у вас есть. Вы также можете пропустить этот шаг." />
+          <Text Value="Введите токен активации. Без токена продолжить установку нельзя." />
         </Control>
         <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44"
                  TabSkip="yes" Text="WixUI_Bmp_Banner" />
@@ -65,8 +65,16 @@
 
         <Control Id="Back"   Type="PushButton" X="156" Y="243" Width="56"  Height="17" Text="&amp;Назад" />
         <Control Id="Next"   Type="PushButton" X="214" Y="243" Width="56"  Height="17" Default="yes" Text="&amp;Далее" />
-        <Control Id="Skip"   Type="PushButton" X="25"  Y="243" Width="120" Height="17" Text="У меня нет токена" />
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56"  Height="17" Cancel="yes" Text="Отмена" />
+      </Dialog>
+
+      <Dialog Id="TokenRequiredDlg" Width="260" Height="95" Title="OTGuru Agent — Токен">
+        <Control Id="Message" Type="Text" X="15" Y="15" Width="230" Height="40" NoPrefix="yes">
+          <Text Value="Введите токен активации, чтобы продолжить." />
+        </Control>
+        <Control Id="OK" Type="PushButton" X="102" Y="60" Width="56" Height="17" Default="yes" Text="ОК">
+          <Publish Event="EndDialog" Value="Return" />
+        </Control>
       </Dialog>
     </UI>
   </Fragment>

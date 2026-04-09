@@ -63,9 +63,10 @@
                   Impersonate="yes"
                   Return="ignore" />
 
-    <!-- [TOKEN] expanded when this immediate action runs (after UI) -->
+    <!-- [TOKEN] expanded when deferred CA runs. LocalAppDataFolder = %LOCALAPPDATA% (matches aw_core
+         platformdirs user_data_dir on Windows). AppDataFolder is Roaming and was the wrong root. -->
     <SetProperty Id="RunPostInstall"
-                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot; -UserAppData &quot;[AppDataFolder]&quot;"
+                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot; -UserAppData [LocalAppDataFolder]"
                  Sequence="execute"
                  Before="RunPostInstall" />
 

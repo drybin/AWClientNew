@@ -3,6 +3,11 @@ param(
     [string]$UserAppData = ""
 )
 
+# WixQuietExec can leave a stray quote on expanded args; paths must not contain embedded ".
+if ($UserAppData) {
+    $UserAppData = $UserAppData.Trim().Trim('"')
+}
+
 $ErrorActionPreference = "Continue"
 
 $logDir = "C:\ProgramData\OTGuruAgent\logs"
@@ -101,10 +106,10 @@ if ($tokenValue -ne "") {
     $targetBase = ""
     if ($UserAppData -ne "") {
         $targetBase = $UserAppData
-        Write-Log "Using MSI user AppData path: $targetBase"
-    } elseif ($env:APPDATA -ne "") {
-        $targetBase = $env:APPDATA
-        Write-Log "Using process APPDATA path: $targetBase"
+        Write-Log "Using MSI user LocalAppData path: $targetBase"
+    } elseif ($env:LOCALAPPDATA -ne "") {
+        $targetBase = $env:LOCALAPPDATA
+        Write-Log "Using process LOCALAPPDATA path: $targetBase"
     }
 
     if ($targetBase -ne "") {
