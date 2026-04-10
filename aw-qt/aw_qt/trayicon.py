@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Set
 
 import aw_core
 from PyQt6 import QtCore
-from PyQt6.QtCore import QCoreApplication
+from PyQt6.QtCore import QCoreApplication, Qt
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -317,6 +317,34 @@ def _load_tray_window_icon() -> QIcon:
     return icon
 
 
+def _icon_for_windows_shell_tray(icon: QIcon) -> QIcon:
+    """Windows ShellNotify uses small HICONs; QIcon(.exe) can report isNull()==False but return null 16px pixmaps."""
+    if sys.platform != "win32":
+        return icon
+    out = QIcon()
+    for s in (16, 20, 24, 32):
+        pm = icon.pixmap(s, s)
+        if not pm.isNull():
+            out.addPixmap(pm)
+    if not out.isNull():
+        return out
+    for s in (128, 64, 48, 256, 32):
+        pm = icon.pixmap(s, s)
+        if pm.isNull():
+            continue
+        for ts in (16, 20, 24, 32):
+            sm = pm.scaled(
+                ts,
+                ts,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            out.addPixmap(sm)
+        if not out.isNull():
+            return out
+    return icon
+
+
 def run(manager: Manager, testing: bool = False) -> Any:
     logger.info("Creating trayicon...")
 
@@ -332,6 +360,9 @@ def run(manager: Manager, testing: bool = False) -> Any:
             )
         except Exception as e:
             logger.debug("SetCurrentProcessExplicitAppUserModelID: %s", e)
+
+    # Tray pixmaps on HiDPI Windows
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
 
     app = QApplication(sys.argv)
 
@@ -380,6 +411,8 @@ def run(manager: Manager, testing: bool = False) -> Any:
         icon.setIsMask(True)
     else:
         icon = _load_tray_window_icon()
+        if sys.platform == "win32":
+            icon = _icon_for_windows_shell_tray(icon)
 
     trayIcon = TrayIcon(manager, icon, widget, testing=testing)
     trayIcon.show()

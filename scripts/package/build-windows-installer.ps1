@@ -90,6 +90,15 @@ Move-Item "$Root\dist\activitywatch\aw-qt" $tmp
 Move-Item "$tmp\*" "$Root\dist\activitywatch\"
 Remove-Item $tmp -Force
 
+# Legacy ActivityWatch layout: media/logo next to aw-qt.exe. PyInstaller 6 may keep assets only under _internal,
+# which breaks tray icons; always merge source tree media into the bundle root.
+Write-Host "== ensure media/ next to aw-qt.exe (tray icons) =="
+$mediaSrc = Join-Path $Root "aw-qt\media"
+$mediaDst = Join-Path $Root "dist\activitywatch\media"
+if (Test-Path $mediaSrc) {
+    Copy-Item -Path $mediaSrc -Destination $mediaDst -Recurse -Force
+}
+
 # Linux-only junk (no-op if missing)
 @("libdrm.so.2", "libharfbuzz.so.0", "libfontconfig.so.1", "libfreetype.so.6") | ForEach-Object {
     Remove-Item "$Root\dist\activitywatch\$_" -Force -ErrorAction SilentlyContinue
