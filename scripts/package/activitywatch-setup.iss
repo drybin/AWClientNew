@@ -8,6 +8,10 @@
 #define MyAppExeName "aw-qt.exe"
 #define RootDir "..\.."
 #define DistDir "..\..\dist"
+; Same relative layout as WiX/post-install.ps1: {userappdata}\activitywatch\activitywatch\aw-server\preload.txt
+; Silent/unattended: pass token on the command line, e.g. setup.exe /VERYSILENT /token=YOURTOKEN
+#define PreloadAppDataSubdir "activitywatch\activitywatch\aw-server"
+#define PreloadFileName "preload.txt"
 
 #pragma verboselevel 9
 
@@ -61,3 +65,71 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 ; NOTE: Doesn't work? And also discouraged by the docs
 ;[InstallDelete]
 ;Type: filesandordirs; Name: "{app}\"
+
+[Code]
+var
+  TokenPage: TInputQueryWizardPage;
+
+function PreloadDir: String;
+begin
+  Result := ExpandConstant('{userappdata}\{#PreloadAppDataSubdir}');
+end;
+
+function PreloadFilePath: String;
+begin
+  Result := PreloadDir + '\{#PreloadFileName}';
+end;
+
+function GetTokenForInstall: String;
+begin
+  Result := Trim(TokenPage.Values[0]);
+  if Result = '' then
+    Result := Trim(ExpandConstant('{param:token|}'));
+end;
+
+procedure InitializeWizard;
+begin
+  TokenPage := CreateInputQueryPage(
+    wpWelcome,
+    'Токен активации',
+    'Введите токен активации. Без токена продолжить установку нельзя. Файл будет записан в профиль пользователя (как в MSI): ...\AppData\Roaming\activitywatch\activitywatch\aw-server\preload.txt',
+    'Токен:',
+    False);
+  TokenPage.Values[0] := ExpandConstant('{param:token|}');
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if CurPageID = TokenPage.ID then
+  begin
+    if Trim(TokenPage.Values[0]) = '' then
+    begin
+      MsgBox('Введите токен активации, чтобы продолжить.', mbError, MB_OK);
+      Result := False;
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Token: String;
+  Dir: String;
+begin
+  if CurStep <> ssPostInstall then
+    Exit;
+
+  Token := GetTokenForInstall;
+  if Token = '' then
+    Exit;
+
+  Dir := PreloadDir;
+  if not ForceDirectories(Dir) then
+  begin
+    MsgBox('Не удалось создать каталог для токена:'#13#10 + Dir, mbError, MB_OK);
+    Exit;
+  end;
+
+  if not SaveStringToFile(PreloadFilePath, Token, False) then
+    MsgBox('Не удалось записать токен в:'#13#10 + PreloadFilePath, mbError, MB_OK);
+end;
