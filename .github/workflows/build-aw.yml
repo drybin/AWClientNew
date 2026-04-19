@@ -64,6 +64,12 @@ jobs:
         shell: bash
         run: pyinstaller --clean --noconfirm aw.spec
 
+      - name: Verify aw-qt.exe has embedded icon
+        shell: bash
+        run: |
+          pip install --quiet pefile
+          python scripts/package/verify_windows_exe_icon.py dist/aw-qt/aw-qt.exe
+
       - name: Assemble dist/activitywatch
         shell: bash
         run: |

@@ -36,10 +36,11 @@ def build_analysis(name, location, binaries=[], datas=[], hiddenimports=[]):
     )
 
 
-def build_collect(analysis, name, console=True, exe_icon=None):
+def build_collect(analysis, name, console=True, exe_icon=None, upx=True):
     """Used to build the COLLECT statements for each module.
 
     exe_icon: optional path to .ico — embedded in the Windows PE (e.g. aw-qt tray/taskbar).
+    upx: set False for aw-qt on Windows — UPX can break Explorer / shell icon display for the exe.
     """
     pyz = PYZ(analysis.pure, analysis.zipped_data)
     exe_kw = dict(
@@ -47,7 +48,7 @@ def build_collect(analysis, name, console=True, exe_icon=None):
         name=name,
         debug=False,
         strip=False,
-        upx=True,
+        upx=upx,
         console=console,
         contents_directory=".",
         entitlements_file=entitlements_file,
@@ -66,7 +67,7 @@ def build_collect(analysis, name, console=True, exe_icon=None):
         analysis.zipfiles,
         analysis.datas,
         strip=False,
-        upx=True,
+        upx=upx,
         name=name,
     )
 
@@ -205,6 +206,7 @@ awq_coll = build_collect(
     "aw-qt",
     console=False if platform.system() == "Windows" else True,
     exe_icon=icon if platform.system() == "Windows" else None,
+    upx=False if platform.system() == "Windows" else True,
 )
 
 # aw-watcher-input
