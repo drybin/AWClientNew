@@ -1,4 +1,4 @@
-name: Build OTGuru Agent Installer
+name: Build CtrlDesk Installer
 
 on:
   workflow_run:
@@ -11,7 +11,7 @@ on:
         description: 'Run ID of build-aw workflow (leave empty for latest)'
         required: false
       server_url:
-        description: 'OTGuru server URL'
+        description: 'CtrlDesk / central server URL'
         required: false
         default: ''
       company_id:

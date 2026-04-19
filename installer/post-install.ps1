@@ -3,14 +3,9 @@ param(
     [string]$UserAppData = ""
 )
 
-# WixQuietExec can leave a stray quote on expanded args; paths must not contain embedded ".
-if ($UserAppData) {
-    $UserAppData = $UserAppData.Trim().Trim('"')
-}
-
 $ErrorActionPreference = "Continue"
 
-$logDir = "C:\ProgramData\OTGuruAgent\logs"
+$logDir = "C:\ProgramData\ctrldesk\logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $logFile = "$logDir\install.log"
 
@@ -74,7 +69,7 @@ $hwid | Set-Content (Join-Path $PSScriptRoot "hwid.txt")
 # Resolve token: ProgramData token_pending (immediate CA) → installer folder → -Token param → clipboard
 # Note: deferred CA runs as SYSTEM; clipboard read in post-install often fails — CA writes pending file as user.
 $tokenValue = ""
-$pendingProgramData = Join-Path $env:ProgramData "OTGuruAgent\token_pending.txt"
+$pendingProgramData = Join-Path $env:ProgramData "ctrldesk\token_pending.txt"
 $pendingInstallDir = Join-Path $PSScriptRoot "token_pending.txt"
 foreach ($pendingFile in @($pendingProgramData, $pendingInstallDir)) {
     if ($tokenValue -ne "") { break }
@@ -120,7 +115,7 @@ if ($tokenValue -ne "") {
         Write-Log "Token saved to $targetPath"
     } else {
         $tokenValue | Set-Content (Join-Path $PSScriptRoot "preload.txt")
-        Write-Log "APPDATA not resolved, token saved to installer directory preload.txt"
+        Write-Log "LOCALAPPDATA not resolved, token saved to installer directory preload.txt"
     }
 } else {
     Write-Log "No token provided, preload.txt not created"

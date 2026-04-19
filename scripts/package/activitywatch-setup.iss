@@ -8,6 +8,10 @@
 #define MyAppExeName "aw-qt.exe"
 #define RootDir "..\.."
 #define DistDir "..\..\dist"
+; Must match aw_core.dirs.get_data_dir("aw-server") on Windows: %LOCALAPPDATA%\activitywatch\activitywatch\aw-server\preload.txt
+; Silent/unattended: pass token on the command line, e.g. setup.exe /VERYSILENT /token=YOURTOKEN
+#define PreloadAppDataSubdir "activitywatch\activitywatch\aw-server"
+#define PreloadFileName "preload.txt"
 
 #pragma verboselevel 9
 
@@ -61,3 +65,109 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 ; NOTE: Doesn't work? And also discouraged by the docs
 ;[InstallDelete]
 ;Type: filesandordirs; Name: "{app}\"
+
+[Code]
+var
+  TokenPage: TInputQueryWizardPage;
+
+const
+  PendingTokenRegKey = 'Software\ActivityWatch\Setup';
+  PendingTokenRegName = 'PendingToken';
+
+function PreloadDir: String;
+begin
+  Result := ExpandConstant('{localappdata}\{#PreloadAppDataSubdir}');
+end;
+
+function PreloadFilePath: String;
+begin
+  Result := PreloadDir + '\{#PreloadFileName}';
+end;
+
+function GetTokenForInstall: String;
+var
+  FromReg: String;
+begin
+  Result := Trim(TokenPage.Values[0]);
+  if Result = '' then
+  begin
+    if RegQueryStringValue(HKCU, PendingTokenRegKey, PendingTokenRegName, FromReg) then
+      Result := Trim(FromReg);
+  end;
+  if Result = '' then
+    Result := Trim(ExpandConstant('{param:token|}'));
+end;
+
+procedure InitializeWizard;
+begin
+  TokenPage := CreateInputQueryPage(
+    wpWelcome,
+    'Токен активации',
+    'Введите токен активации. Без токена продолжить установку нельзя. Файл будет записан в каталог данных ActivityWatch: ...\AppData\Local\activitywatch\activitywatch\aw-server\preload.txt',
+    'После ввода нажмите «Далее».');
+  TokenPage.Add('Токен:', False);
+  TokenPage.Values[0] := ExpandConstant('{param:token|}');
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+var
+  T: String;
+begin
+  Result := True;
+  if CurPageID = TokenPage.ID then
+  begin
+    T := Trim(TokenPage.Values[0]);
+    if T = '' then
+    begin
+      MsgBox('Введите токен активации, чтобы продолжить.', mbError, MB_OK);
+      Result := False;
+    end
+    else
+    begin
+      { Persist across UAC restart: with PrivilegesRequired=lowest, /ALLUSERS may spawn an elevated child where TokenPage is empty. }
+      RegWriteStringValue(HKCU, PendingTokenRegKey, PendingTokenRegName, T);
+      Log('Token persisted to HKCU for post-UAC install step.');
+    end;
+  end;
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Token: String;
+  Dir: String;
+  Path: String;
+begin
+  if CurStep <> ssPostInstall then
+    Exit;
+
+  Token := GetTokenForInstall;
+  Path := PreloadFilePath;
+  Log('PostInstall: preload path = ' + Path);
+  if Token = '' then
+  begin
+    Log('PostInstall: token empty (wizard + registry + /token=); skip preload.txt');
+    Exit;
+  end;
+
+  Log('PostInstall: writing token (length ' + IntToStr(Length(Token)) + ')');
+
+  Dir := PreloadDir;
+  if not ForceDirectories(Dir) then
+  begin
+    Log('PostInstall: ForceDirectories failed: ' + Dir);
+    MsgBox('Не удалось создать каталог для токена:'#13#10 + Dir, mbError, MB_OK);
+    Exit;
+  end;
+
+  if not SaveStringToFile(Path, Token, False) then
+  begin
+    Log('PostInstall: SaveStringToFile failed: ' + Path);
+    MsgBox('Не удалось записать токен в:'#13#10 + Path, mbError, MB_OK);
+  end
+  else
+  begin
+    Log('PostInstall: preload.txt written OK');
+    if RegValueExists(HKCU, PendingTokenRegKey, PendingTokenRegName) then
+      RegDeleteValue(HKCU, PendingTokenRegKey, PendingTokenRegName);
+  end;
+end;

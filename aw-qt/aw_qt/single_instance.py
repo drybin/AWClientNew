@@ -19,13 +19,13 @@ _lock_fp: Optional[Any] = None
 
 def _notify_already_running() -> None:
     msg = (
-        "ActivityWatch is already running.\n"
-        "Check the system tray (notification area) for the icon."
+        "CtrlDesk is already running.\n"
+        "Check the system tray (notification area, ^ hidden icons) for the icon."
     )
     if sys.platform == "win32":
         import ctypes
 
-        ctypes.windll.user32.MessageBoxW(0, msg, "ActivityWatch", MB_OK | MB_ICONINFORMATION)
+        ctypes.windll.user32.MessageBoxW(0, msg, "CtrlDesk", MB_OK | MB_ICONINFORMATION)
     else:
         print(msg, file=sys.stderr)
 

@@ -1,62 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
-  <Package Name="OTGuru Agent"
-           Manufacturer="OTGuru"
+  <Package Name="CtrlDesk"
+           Manufacturer="CtrlDesk"
            Version="1.0.0"
            UpgradeCode="4A8B3C2D-1E5F-4A8B-9C2D-3E5F6A8B3C2D"
            Scope="perMachine"
-           Language="1049"
            Codepage="1251">
 
-    <MajorUpgrade DowngradeErrorMessage="A newer version of OTGuru Agent is already installed." />
+    <MajorUpgrade DowngradeErrorMessage="Уже установлена более новая версия CtrlDesk." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <UIRef Id="WixUI_OTGuru" />
+    <UIRef Id="WixUI_CtrlDesk" />
 
     <!-- Required by VerifyReadyDlg - controls linked to WIXUI_INSTALLDIR cause 2819 if missing -->
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <Property Id="TOKEN" Secure="yes" />
 
-    <!-- Install directory: C:\Program Files\OTGuruAgent\ -->
+    <!-- Install directory: C:\Program Files\ctrldesk\ -->
     <StandardDirectory Id="ProgramFiles64Folder">
-      <Directory Id="INSTALLFOLDER" Name="OTGuruAgent" />
+      <Directory Id="INSTALLFOLDER" Name="ctrldesk" />
     </StandardDirectory>
 
-    <!-- Start Menu shortcut -->
+    <!-- Start Menu: Programs\ctrldesk\ctrldesk.lnk (same idea as old Inno "ActivityWatch") -->
     <StandardDirectory Id="ProgramMenuFolder">
-      <Directory Id="AppMenuFolder" Name="OTGuru Agent" />
+      <Directory Id="AppMenuFolder" Name="ctrldesk" />
     </StandardDirectory>
 
-    <Feature Id="Main" Title="OTGuru Agent" Level="1">
+    <!-- User Startup folder: same behavior as old Inno [Tasks] StartMenuEntry — reliable tray after login (Run key had no quotes for paths with spaces) -->
+    <StandardDirectory Id="StartupFolder">
+      <Component Id="UserStartupShortcut" Guid="8F1E2D3C-4B5A-6978-9012-3456789ABCDE">
+        <Shortcut Id="StartupShortcut"
+                  Name="ctrldesk"
+                  Target="[INSTALLFOLDER]aw-qt.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU"
+                       Key="Software\CtrlDesk\Setup"
+                       Name="StartupShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="CtrlDesk" Level="1">
       <ComponentGroupRef Id="ActivityWatchFiles" />
       <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="UserStartupShortcut" />
     </Feature>
 
-    <!-- Start Menu shortcut + autostart component -->
+    <!-- Start Menu shortcut -->
     <Component Id="StartMenuShortcut" Directory="AppMenuFolder"
                Guid="5B9C4D3E-2F6A-5B9C-AD3E-4F6A7B9C4D3E">
       <Shortcut Id="AppShortcut"
-                Name="OTGuru Agent"
+                Name="ctrldesk"
                 Target="[INSTALLFOLDER]aw-qt.exe"
                 WorkingDirectory="INSTALLFOLDER" />
       <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
       <RegistryValue Root="HKLM"
-                     Key="Software\OTGuru\Agent"
+                     Key="Software\CtrlDesk\Agent"
                      Name="Installed"
                      Type="integer"
                      Value="1"
                      KeyPath="yes" />
-      <!-- Autostart -->
-      <RegistryValue Root="HKCU"
-                     Key="Software\Microsoft\Windows\CurrentVersion\Run"
-                     Name="OTGuruAgent"
-                     Value="[INSTALLFOLDER]aw-qt.exe"
-                     Type="string" />
     </Component>
 
     <Binary Id="WriteTokenScript" SourceFile="installer/WriteToken.vbs" />
 
-    <!-- Immediate CA: write TOKEN (or clipboard) to %ProgramData%\OTGuruAgent\token_pending.txt -->
+    <!-- Immediate CA: write TOKEN (or clipboard) to %ProgramData%\ctrldesk\token_pending.txt -->
     <CustomAction Id="WriteTokenToFile"
                   BinaryRef="WriteTokenScript"
                   VBScriptCall="WriteTokenToFile"
@@ -64,10 +74,9 @@
                   Impersonate="yes"
                   Return="ignore" />
 
-    <!-- [TOKEN] expanded when deferred CA runs. LocalAppDataFolder = %LOCALAPPDATA% (matches aw_core
-         platformdirs user_data_dir on Windows). AppDataFolder is Roaming and was the wrong root. -->
+    <!-- [TOKEN] expanded when this immediate action runs (after UI) -->
     <SetProperty Id="RunPostInstall"
-                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot; -UserAppData [LocalAppDataFolder]"
+                 Value="&quot;powershell.exe&quot; -ExecutionPolicy Bypass -NonInteractive -File &quot;[INSTALLFOLDER]post-install.ps1&quot; -Token &quot;[TOKEN]&quot; -UserAppData &quot;[LocalAppDataFolder]&quot;"
                  Sequence="execute"
                  Before="RunPostInstall" />
 

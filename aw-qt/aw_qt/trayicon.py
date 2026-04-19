@@ -5,11 +5,12 @@ import subprocess
 import sys
 import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Set
 
 import aw_core
 from PyQt6 import QtCore
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QCoreApplication, Qt
+from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QMenu,
@@ -81,7 +82,7 @@ class TrayIcon(QSystemTrayIcon):
     ) -> None:
         QSystemTrayIcon.__init__(self, icon, parent)
         self._parent = parent  # QSystemTrayIcon also tries to save parent info but it screws up the type info
-        self.setToolTip("ActivityWatch" + (" (testing)" if testing else ""))
+        self.setToolTip("CtrlDesk" + (" (testing)" if testing else ""))
 
         self.manager = manager
         self.testing = testing
@@ -200,8 +201,168 @@ def exit(manager: Manager) -> None:
     QApplication.quit()
 
 
+def _frozen_install_bases() -> List[Path]:
+    """Roots where PyInstaller may place media/ (never rely on __file__ alone — it can be wrong in PYZ)."""
+    bases: List[Path] = []
+    if not getattr(sys, "frozen", False):
+        return bases
+    exe_dir = Path(sys.executable).resolve().parent
+    bases.append(exe_dir)
+    bases.append(exe_dir / "_internal")
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        bases.append(Path(meipass))
+    seen: Set[str] = set()
+    out: List[Path] = []
+    for b in bases:
+        try:
+            key = str(b.resolve())
+        except OSError:
+            key = str(b)
+        if key not in seen:
+            seen.add(key)
+            out.append(b)
+    return out
+
+
+def _try_icon_from_path(p: Path) -> Optional[QIcon]:
+    if not p.is_file():
+        return None
+    if p.suffix.lower() == ".ico":
+        ic = QIcon(str(p))
+        return ic if not ic.isNull() else None
+    pm = QPixmap(str(p))
+    if pm.isNull():
+        return None
+    ic = QIcon(pm)
+    return ic if not ic.isNull() else None
+
+
+def _discover_logo_file_frozen() -> Optional[Path]:
+    """Walk install tree shallowly for media/logo/* (handles odd flatten / CI layouts)."""
+    for base in _frozen_install_bases():
+        logo_dir = base / "media" / "logo"
+        if not logo_dir.is_dir():
+            continue
+        for name in ("logo.ico", "logo.png", "logo-128.png"):
+            p = logo_dir / name
+            if p.is_file():
+                return p
+    # e.g. logo.ico copied next to exe by mistake
+    for base in _frozen_install_bases():
+        for name in ("logo.ico", "logo.png"):
+            p = base / name
+            if p.is_file():
+                return p
+    return None
+
+
+def _load_tray_window_icon() -> QIcon:
+    """Resolve tray icon for dev, PyInstaller onedir/onefile (incl. _internal), macOS .app."""
+    icon = QIcon("icons:logo.png")
+    if not icon.isNull() and icon.availableSizes():
+        return icon
+
+    if sys.platform == "win32":
+        filenames = ("logo.ico", "logo.png", "logo-128.png")
+    else:
+        filenames = ("logo.png", "logo-128.png")
+
+    # Dev / source tree (unfrozen)
+    scriptdir = Path(__file__).resolve().parent
+    for root in (
+        scriptdir.parent,
+        scriptdir.parent.parent / "Resources" / "aw_qt",
+    ):
+        logo_dir = root / "media" / "logo"
+        for name in filenames:
+            p = logo_dir / name
+            ic = _try_icon_from_path(p)
+            if ic is not None:
+                logger.info("Tray icon loaded from %s", p)
+                return ic
+
+    # Frozen: use install roots only (not __file__ — wrong for PYZ modules)
+    for base in _frozen_install_bases():
+        logo_dir = base / "media" / "logo"
+        for name in filenames:
+            p = logo_dir / name
+            ic = _try_icon_from_path(p)
+            if ic is not None:
+                logger.info("Tray icon loaded from %s", p)
+                return ic
+
+    discovered = _discover_logo_file_frozen()
+    if discovered is not None:
+        ic = _try_icon_from_path(discovered)
+        if ic is not None:
+            logger.info("Tray icon loaded (discovered) from %s", discovered)
+            return ic
+
+    # PyInstaller sets the .exe icon from logo.ico — Qt can load it from the binary on Windows.
+    if sys.platform == "win32" and getattr(sys, "frozen", False):
+        exe_path = Path(sys.executable).resolve()
+        ic_exe = QIcon(str(exe_path))
+        if not ic_exe.isNull():
+            logger.info("Tray icon loaded from application executable resource: %s", exe_path)
+            return ic_exe
+
+    if getattr(sys, "frozen", False):
+        logger.warning(
+            "Tray icon: no media/logo file and no exe icon; tried bases %s",
+            _frozen_install_bases(),
+        )
+    else:
+        logger.warning("Tray icon: no media/logo under aw-qt dev tree")
+    return icon
+
+
+def _icon_for_windows_shell_tray(icon: QIcon) -> QIcon:
+    """Windows ShellNotify uses small HICONs; QIcon(.exe) can report isNull()==False but return null 16px pixmaps."""
+    if sys.platform != "win32":
+        return icon
+    out = QIcon()
+    for s in (16, 20, 24, 32):
+        pm = icon.pixmap(s, s)
+        if not pm.isNull():
+            out.addPixmap(pm)
+    if not out.isNull():
+        return out
+    for s in (128, 64, 48, 256, 32):
+        pm = icon.pixmap(s, s)
+        if pm.isNull():
+            continue
+        for ts in (16, 20, 24, 32):
+            sm = pm.scaled(
+                ts,
+                ts,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+            out.addPixmap(sm)
+        if not out.isNull():
+            return out
+    return icon
+
+
 def run(manager: Manager, testing: bool = False) -> Any:
     logger.info("Creating trayicon...")
+
+    # Before any QWidget / QApplication — required for correct taskbar/shell integration on Windows.
+    QCoreApplication.setApplicationName("CtrlDesk")
+    QCoreApplication.setOrganizationName("CtrlDesk")
+    if sys.platform == "win32":
+        try:
+            import ctypes
+
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
+                "GFPC.CtrlDesk.aw-qt.1"
+            )
+        except Exception as e:
+            logger.debug("SetCurrentProcessExplicitAppUserModelID: %s", e)
+
+    # Qt 6 removed Qt.AA_UseHighDpiPixmaps; HiDPI pixmaps are default.
+
     app = QApplication(sys.argv)
 
     # This is needed for the icons to get picked up with PyInstaller
@@ -248,7 +409,9 @@ def run(manager: Manager, testing: bool = False) -> Any:
         # Allow macOS to use filters for changing the icon's color
         icon.setIsMask(True)
     else:
-        icon = QIcon("icons:logo.png")
+        icon = _load_tray_window_icon()
+        if sys.platform == "win32":
+            icon = _icon_for_windows_shell_tray(icon)
 
     trayIcon = TrayIcon(manager, icon, widget, testing=testing)
     trayIcon.show()

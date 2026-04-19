@@ -53,7 +53,7 @@ Function WriteTokenToFile
   If Len(base) = 0 Then base = "C:\ProgramData"
 
   Set fso = CreateObject("Scripting.FileSystemObject")
-  folder = fso.BuildPath(base, "OTGuruAgent")
+  folder = fso.BuildPath(base, "ctrldesk")
   If Not fso.FolderExists(folder) Then fso.CreateFolder folder
   path = fso.BuildPath(folder, "token_pending.txt")
 

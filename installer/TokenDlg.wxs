@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Fragment>
-    <UI Id="WixUI_OTGuru">
+    <UI Id="WixUI_CtrlDesk">
       <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
       <TextStyle Id="WixUI_Font_Title"  FaceName="Tahoma" Size="9" Bold="yes" />
       <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
@@ -44,7 +44,7 @@
         <Show Dialog="MaintenanceWelcomeDlg" Before="ProgressDlg" Condition="Installed AND NOT Resume" />
       </InstallUISequence>
 
-      <Dialog Id="TokenDlg" Width="370" Height="270" Title="[ProductName] — Токен активации">
+      <Dialog Id="TokenDlg" Width="370" Height="270" Title="CtrlDesk — Токен активации">
         <Control Id="Title" Type="Text" X="15" Y="15" Width="340" Height="20"
                  Transparent="yes" NoPrefix="yes">
           <Text Value="{\WixUI_Font_Title}Токен активации" />
@@ -68,7 +68,7 @@
         <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56"  Height="17" Cancel="yes" Text="Отмена" />
       </Dialog>
 
-      <Dialog Id="TokenRequiredDlg" Width="260" Height="95" Title="[ProductName] — Токен">
+      <Dialog Id="TokenRequiredDlg" Width="260" Height="95" Title="CtrlDesk — Токен">
         <Control Id="Message" Type="Text" X="15" Y="15" Width="230" Height="40" NoPrefix="yes">
           <Text Value="Введите токен активации, чтобы продолжить." />
         </Control>

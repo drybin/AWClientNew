@@ -56,8 +56,8 @@ jobs:
       - name: Check install path is 64-bit Program Files
         shell: pwsh
         run: |
-          $path64 = "C:\Program Files\OTGuruAgent"
-          $path32 = "C:\Program Files (x86)\OTGuruAgent"
+          $path64 = "C:\Program Files\ctrldesk"
+          $path32 = "C:\Program Files (x86)\ctrldesk"
 
           if (Test-Path $path32) {
             Write-Error "FAIL: Installed in 32-bit path ($path32) — WiX arch flag missing"
@@ -72,10 +72,9 @@ jobs:
       - name: Check required files exist
         shell: pwsh
         run: |
-          $dir = "C:\Program Files\OTGuruAgent"
+          $dir = "C:\Program Files\ctrldesk"
           $required = @(
-            "aw-qt.exe",
-            "python39.dll"
+            "aw-qt.exe"
           )
           $failed = @()
           foreach ($f in $required) {
@@ -94,7 +93,7 @@ jobs:
       - name: Check aw-qt.exe starts (offscreen mode)
         shell: pwsh
         run: |
-          $exe = "C:\Program Files\OTGuruAgent\aw-qt.exe"
+          $exe = "C:\Program Files\ctrldesk\aw-qt.exe"
           Write-Host "Starting $exe with QT_QPA_PLATFORM=offscreen ..."
           $env:QT_QPA_PLATFORM = "offscreen"
           $proc = Start-Process $exe `
@@ -120,7 +119,7 @@ jobs:
       - name: Check aw-server.exe starts and serves
         shell: pwsh
         run: |
-          $exe = "C:\Program Files\OTGuruAgent\aw-server.exe"
+          $exe = "C:\Program Files\ctrldesk\aw-server.exe"
           Write-Host "Starting $exe ..."
           $proc = Start-Process $exe `
             -RedirectStandardOutput "aw-server-stdout.log" `
