@@ -100,6 +100,9 @@ class TrayIcon(QSystemTrayIcon):
         super().show()
         # Shell tray on Windows may ignore szTip until after the icon is shown (Qt NOTIFYICON).
         self.setToolTip(self._tray_tooltip())
+        if sys.platform == "win32":
+            # Force Explorer to refresh the tray entry after the tooltip is set.
+            self.setIcon(self.icon())
 
     def on_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
         if reason == QSystemTrayIcon.ActivationReason.DoubleClick:
